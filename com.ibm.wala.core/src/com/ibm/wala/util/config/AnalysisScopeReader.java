@@ -40,9 +40,15 @@ public class AnalysisScopeReader {
 
   /**
    * read in an analysis scope for a Java application from a text file
-   * @param scopeFileName the text file specifying the scope
-   * @param exclusionsFile a file specifying code to be excluded from the scope; can be <code>null</code>
-   * @param javaLoader the class loader used to read in files referenced in the scope file, via {@link ClassLoader#getResource(String)}
+   * 
+   * @param scopeFileName
+   *          the text file specifying the scope
+   * @param exclusionsFile
+   *          a file specifying code to be excluded from the scope; can be
+   *          <code>null</code>
+   * @param javaLoader
+   *          the class loader used to read in files referenced in the scope
+   *          file, via {@link ClassLoader#getResource(String)}
    * @return the analysis scope
    * @throws IOException
    */
@@ -50,7 +56,6 @@ public class AnalysisScopeReader {
     AnalysisScope scope = AnalysisScope.createJavaAnalysisScope();
     return read(scope, scopeFileName, exclusionsFile, javaLoader, new FileProvider());
   }
-
 
   protected static AnalysisScope read(AnalysisScope scope, String scopeFileName, File exclusionsFile, ClassLoader javaLoader,
       FileProvider fp) throws IOException {
@@ -60,11 +65,12 @@ public class AnalysisScopeReader {
       assert scopeFile.exists();
 
       String line;
-      // assume the scope file is UTF-8 encoded; ASCII files will also be handled properly
+      // assume the scope file is UTF-8 encoded; ASCII files will also be
+      // handled properly
       // TODO allow specifying encoding as a parameter?
       r = new BufferedReader(new InputStreamReader(new FileInputStream(scopeFile), "UTF-8"));
       while ((line = r.readLine()) != null) {
-        processScopeDefLine(scope, javaLoader, line);
+        processScopeDefLine(scope, javaLoader, line, fp);
       }
 
       if (exclusionsFile != null) {
@@ -84,7 +90,13 @@ public class AnalysisScopeReader {
     return scope;
   }
 
-  public static void processScopeDefLine(AnalysisScope scope, ClassLoader javaLoader, String line) throws IOException {
+  public static void processScopeDefLine(AnalysisScope analysisScope, ClassLoader classLoader, String moduleLine)
+      throws IOException {
+    processScopeDefLine(analysisScope, classLoader, moduleLine, null);
+  }
+
+  public static void processScopeDefLine(AnalysisScope scope, ClassLoader javaLoader, String line, FileProvider fp)
+      throws IOException {
     if (line == null) {
       throw new IllegalArgumentException("null line");
     }
@@ -99,7 +111,9 @@ public class AnalysisScopeReader {
     String language = toks.nextToken();
     String entryType = toks.nextToken();
     String entryPathname = toks.nextToken();
-    FileProvider fp = (new FileProvider());
+    if (fp == null) {
+      fp = new FileProvider();
+    }
     if ("classFile".equals(entryType)) {
       File cf = fp.getFile(entryPathname, javaLoader);
       try {
@@ -134,21 +148,24 @@ public class AnalysisScopeReader {
   }
 
   /**
-   * @param exclusionsFile file holding class hierarchy exclusions. may be null
-   * @throws IOException 
-   * @throws IllegalStateException if there are problmes reading wala properties
+   * @param exclusionsFile
+   *          file holding class hierarchy exclusions. may be null
+   * @throws IOException
+   * @throws IllegalStateException
+   *           if there are problmes reading wala properties
    */
   public static AnalysisScope makePrimordialScope(File exclusionsFile) throws IOException {
     return readJavaScope(BASIC_FILE, exclusionsFile, MY_CLASSLOADER);
   }
 
-
-
   /**
-   * @param classPath class path to analyze, delimited by {@link File#pathSeparator}
-   * @param exclusionsFile file holding class hierarchy exclusions. may be null
-   * @throws IOException 
-   * @throws IllegalStateException if there are problems reading wala properties
+   * @param classPath
+   *          class path to analyze, delimited by {@link File#pathSeparator}
+   * @param exclusionsFile
+   *          file holding class hierarchy exclusions. may be null
+   * @throws IOException
+   * @throws IllegalStateException
+   *           if there are problems reading wala properties
    */
   public static AnalysisScope makeJavaBinaryAnalysisScope(String classPath, File exclusionsFile) throws IOException {
     if (classPath == null) {
