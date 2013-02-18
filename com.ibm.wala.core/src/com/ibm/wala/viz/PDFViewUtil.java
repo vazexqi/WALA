@@ -10,8 +10,9 @@
  *******************************************************************************/
 package com.ibm.wala.viz;
 
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.Iterator;
+import java.util.Map;
 
 import com.ibm.wala.cfg.CFGSanitizer;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
@@ -27,7 +28,6 @@ import com.ibm.wala.ssa.SSAPiInstruction;
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.collections.HashMapFactory;
 import com.ibm.wala.util.graph.Graph;
-import com.ibm.wala.util.strings.StringStuff;
 
 /**
  * utilities for integrating with ghostview (or another PS/PDF viewer)
@@ -57,16 +57,16 @@ public class PDFViewUtil {
     if (ir == null) {
       throw new IllegalArgumentException("ir is null");
     }
-    Graph<? extends ISSABasicBlock> g = ir.getControlFlowGraph();
+    Graph<? extends ISSABasicBlock> cfg = ir.getControlFlowGraph();
 
     NodeDecorator labels = makeIRDecorator(ir);
     if (annotations != null) {
       labels = new ConcatenatingNodeDecorator(annotations, labels);
     }
 
-    g = CFGSanitizer.sanitize(ir, cha);
+    cfg = CFGSanitizer.sanitize(ir, cha);
 
-    DotUtil.dotify(g, labels, dotFile, pdfFile, dotExe);
+    DotUtil.dotify(cfg, labels, dotFile, pdfFile, dotExe);
 
     return launchPDFView(pdfFile, pdfViewExe);
   }
@@ -75,7 +75,7 @@ public class PDFViewUtil {
     if (ir == null) {
       throw new IllegalArgumentException("ir is null");
     }
-    final HashMap<BasicBlock, String> labelMap = HashMapFactory.make();
+    final Map<BasicBlock, String> labelMap = HashMapFactory.make();
     for (Iterator it = ir.getControlFlowGraph().iterator(); it.hasNext();) {
       SSACFG.BasicBlock bb = (SSACFG.BasicBlock) it.next();
       labelMap.put(bb, getNodeLabel(ir, bb));
@@ -110,11 +110,13 @@ public class PDFViewUtil {
   }
 
   private static String getNodeLabel(IR ir, BasicBlock bb) {
-    StringBuffer result = new StringBuffer();
+    StringBuilder result = new StringBuilder();
 
     int start = bb.getFirstInstructionIndex();
     int end = bb.getLastInstructionIndex();
+
     result.append("BB").append(bb.getNumber());
+
     if (bb.isEntryBlock()) {
       result.append(" (en)\\n");
     } else if (bb.isExitBlock()) {
@@ -124,6 +126,7 @@ public class PDFViewUtil {
       result.append("<Handler>");
     }
     result.append("\\n");
+
     for (Iterator it = bb.iteratePhis(); it.hasNext();) {
       SSAPhiInstruction phi = (SSAPhiInstruction) it.next();
       if (phi != null) {
@@ -142,9 +145,11 @@ public class PDFViewUtil {
     SSAInstruction[] instructions = ir.getInstructions();
     for (int j = start; j <= end; j++) {
       if (instructions[j] != null) {
-        StringBuffer x = new StringBuffer(j + "   " + instructions[j].toString(ir.getSymbolTable()));
-        StringStuff.padWithSpaces(x, 35);
-        result.append(x);
+        StringBuilder x = new StringBuilder(j + "   " + instructions[j].toString(ir.getSymbolTable()));
+        String padded = String.format("%1$-35s", x.toString());
+        result.append(padded);
+        result.append("\\l");
+        result.append(SSAValuesToLocalVariables(instructions[j], j, ir));
         result.append("\\l");
       }
     }
@@ -155,6 +160,28 @@ public class PDFViewUtil {
       }
     }
     return result.toString();
+  }
+
+  private static String SSAValuesToLocalVariables(SSAInstruction instr, int instructionIndex, IR ir) {
+    StringBuilder sb = new StringBuilder();
+
+    int numDefs = instr.getNumberOfDefs();
+    sb.append("[DEF: ");
+    for (int i = 0; i < numDefs; i++) {
+      int def = instr.getDef(i);
+      sb.append(String.format("v%s=%s, ", def, Arrays.toString(ir.getLocalNames(instructionIndex, def))));
+    }
+    sb.append("]");
+
+    int numUses = instr.getNumberOfUses();
+    sb.append("[USE: ");
+    for (int i = 0; i < numUses; i++) {
+      int def = instr.getUse(i);
+      sb.append(String.format("v%s=%s, ", def, Arrays.toString(ir.getLocalNames(instructionIndex, def))));
+    }
+    sb.append("]");
+
+    return sb.toString();
   }
 
   /**
