@@ -24,7 +24,6 @@ import com.ibm.wala.ipa.callgraph.impl.Everywhere;
 import com.ibm.wala.ipa.cha.ClassHierarchy;
 import com.ibm.wala.properties.WalaProperties;
 import com.ibm.wala.ssa.IR;
-import com.ibm.wala.ssa.SSAOptions;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.config.AnalysisScopeReader;
@@ -91,7 +90,8 @@ public class PDFWalaIR {
       // Set up options which govern analysis choices.  In particular, we will use all Pi nodes when
       // building the IR.
       AnalysisOptions options = new AnalysisOptions();
-      options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
+      // Turn this feature off since we don't use it and I don't want to handle another instruction, if unnecessary
+      //  options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
       
       // Create an object which caches IRs and related information, reconstructing them lazily on demand.
       AnalysisCache cache = new AnalysisCache();
