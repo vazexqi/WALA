@@ -39,18 +39,19 @@ public class PDFViewUtil {
    * 
    * @return a handle to the ghostview process
    */
-  public static Process ghostviewIR(IClassHierarchy cha, IR ir, String pdfFile, String dotFile, String dotExe, String pdfViewExe)
+  public static Process pdfIR(IClassHierarchy cha, IR ir, String pdfFile, String dotFile, String dotExe, String pdfViewExe)
       throws WalaException {
-    return ghostviewIR(cha, ir, pdfFile, dotFile, dotExe, pdfViewExe, null);
+    return pdfIR(cha, ir, pdfFile, dotFile, dotExe, pdfViewExe, null);
   }
 
   /**
    * spawn a process to view a WALA IR
    * 
    * @return a handle to the pdf viewer process
-   * @throws IllegalArgumentException if ir is null
+   * @throws IllegalArgumentException
+   *           if ir is null
    */
-  public static Process ghostviewIR(IClassHierarchy cha, IR ir, String pdfFile, String dotFile, String dotExe, String pdfViewExe,
+  public static Process pdfIR(IClassHierarchy cha, IR ir, String pdfFile, String dotFile, String dotExe, String pdfViewExe,
       NodeDecorator annotations) throws WalaException {
 
     if (ir == null) {
@@ -88,7 +89,8 @@ public class PDFViewUtil {
   }
 
   /**
-   * A node decorator which concatenates the labels from two other node decorators
+   * A node decorator which concatenates the labels from two other node
+   * decorators
    */
   private final static class ConcatenatingNodeDecorator implements NodeDecorator {
 

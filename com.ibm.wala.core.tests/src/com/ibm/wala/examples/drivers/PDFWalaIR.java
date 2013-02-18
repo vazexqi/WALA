@@ -118,7 +118,7 @@ public class PDFWalaIR {
       String dotExe = wp.getProperty(WalaExamplesProperties.DOT_EXE);
       String gvExe = wp.getProperty(WalaExamplesProperties.PDFVIEW_EXE);
 
-      return PDFViewUtil.ghostviewIR(cha, ir, psFile, dotFile, dotExe, gvExe);
+      return PDFViewUtil.pdfIR(cha, ir, psFile, dotFile, dotExe, gvExe);
 
     } catch (WalaException e) {
       // TODO Auto-generated catch block
