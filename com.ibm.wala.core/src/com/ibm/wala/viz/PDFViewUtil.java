@@ -15,7 +15,9 @@ import java.util.Iterator;
 import java.util.Map;
 
 import com.ibm.wala.cfg.CFGSanitizer;
+import com.ibm.wala.classLoader.IBytecodeMethod;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
+import com.ibm.wala.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.ISSABasicBlock;
 import com.ibm.wala.ssa.SSACFG;
@@ -130,23 +132,33 @@ public class PDFViewUtil {
     for (Iterator it = bb.iteratePhis(); it.hasNext();) {
       SSAPhiInstruction phi = (SSAPhiInstruction) it.next();
       if (phi != null) {
-        result.append("           " + phi.toString(ir.getSymbolTable())).append("\\l");
+        result.append(phi.toString(ir.getSymbolTable())).append("\\l");
       }
     }
     if (bb instanceof ExceptionHandlerBasicBlock) {
       ExceptionHandlerBasicBlock ebb = (ExceptionHandlerBasicBlock) bb;
       SSAGetCaughtExceptionInstruction s = ebb.getCatchInstruction();
       if (s != null) {
-        result.append("           " + s.toString(ir.getSymbolTable())).append("\\l");
+        result.append(s.toString(ir.getSymbolTable())).append("\\l");
       } else {
-        result.append("           " + " No catch instruction. Unreachable?\\l");
+        result.append(" No catch instruction. Unreachable?\\l");
       }
     }
     SSAInstruction[] instructions = ir.getInstructions();
+    IBytecodeMethod method = (IBytecodeMethod) ir.getMethod();
     for (int j = start; j <= end; j++) {
       if (instructions[j] != null) {
-        StringBuilder x = new StringBuilder(j + "   " + instructions[j].toString(ir.getSymbolTable()));
-        String padded = String.format("%1$-35s", x.toString());
+        int bytecodeIndex;
+        String x;
+        try {
+          bytecodeIndex = method.getBytecodeIndex(j);
+          int sourceLineNum = method.getLineNumber(bytecodeIndex);
+          x = String.format(j + " [L%03d] " + instructions[j].toString(ir.getSymbolTable()), sourceLineNum);
+        } catch (InvalidClassFileException e) {
+          e.printStackTrace();
+          x = String.format(j + "   " + instructions[j].toString(ir.getSymbolTable()));
+        }
+        String padded = String.format("%1$-35s", x);
         result.append(padded);
         result.append("\\l");
         result.append(SSAValuesToLocalVariables(instructions[j], j, ir));
