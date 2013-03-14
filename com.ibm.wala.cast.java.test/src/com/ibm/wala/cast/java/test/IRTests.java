@@ -256,7 +256,7 @@ public abstract class IRTests {
     public static class ClassAnnotation {
       private final String className;
       private final String annotationTypeName;
-      
+
       public ClassAnnotation(String className, String annotationTypeName) {
         super();
         this.className = className;
@@ -267,7 +267,7 @@ public abstract class IRTests {
     public static class MethodAnnotation {
       private final String methodSig;
       private final String annotationTypeName;
-      
+
       public MethodAnnotation(String methodSig, String annotationTypeName) {
         super();
         this.methodSig = methodSig;
@@ -277,37 +277,39 @@ public abstract class IRTests {
 
     public final Set<ClassAnnotation> classAnnotations = HashSetFactory.make();
     public final Set<MethodAnnotation> methodAnnotations = HashSetFactory.make();
-    
+
     public void check(CallGraph cg) {
-      classes: for(ClassAnnotation ca : classAnnotations) {
+      classes: for (ClassAnnotation ca : classAnnotations) {
         IClass cls = cg.getClassHierarchy().lookupClass(TypeReference.findOrCreate(ClassLoaderReference.Application, ca.className));
-        IClass at = cg.getClassHierarchy().lookupClass(TypeReference.findOrCreate(ClassLoaderReference.Application, ca.annotationTypeName));
-        for(Annotation a : cls.getAnnotations()) {
+        IClass at = cg.getClassHierarchy().lookupClass(
+            TypeReference.findOrCreate(ClassLoaderReference.Application, ca.annotationTypeName));
+        for (Annotation a : cls.getAnnotations()) {
           if (a.getType().equals(at.getReference())) {
             continue classes;
           }
         }
-        
+
         Assert.assertFalse("cannot find " + at + " in " + cls, false);
       }
-    
-      annot: for(MethodAnnotation ma : methodAnnotations) {
-        IClass at = cg.getClassHierarchy().lookupClass(TypeReference.findOrCreate(ClassLoaderReference.Application, ma.annotationTypeName));
-        for(CGNode n : cg) {
+
+      annot: for (MethodAnnotation ma : methodAnnotations) {
+        IClass at = cg.getClassHierarchy().lookupClass(
+            TypeReference.findOrCreate(ClassLoaderReference.Application, ma.annotationTypeName));
+        for (CGNode n : cg) {
           if (n.getMethod().getSignature().equals(ma.methodSig)) {
-            for(Annotation a : n.getMethod().getAnnotations()) {
+            for (Annotation a : n.getMethod().getAnnotations()) {
               if (a.getType().equals(at.getReference())) {
                 continue annot;
               }
             }
-          
+
             Assert.assertFalse("cannot find " + at, false);
           }
         }
       }
     }
   }
-  
+
   protected Collection<String> singleTestSrc() {
     return Collections.singletonList(getTestSrcPath() + File.separator + singleJavaInputForTest());
   }
@@ -322,15 +324,15 @@ public abstract class IRTests {
 
   protected String getTestName() {
     StackTraceElement stack[] = new Throwable().getStackTrace();
-    for(int i = 0; i <= stack.length; i++) {
+    for (int i = 0; i <= stack.length; i++) {
       if (stack[i].getMethodName().startsWith("test")) {
-        return stack[i].getMethodName();    
+        return stack[i].getMethodName();
       }
     }
-    
+
     throw new Error("test method not found");
   }
-  
+
   protected String[] simpleTestEntryPoint() {
     return new String[] { "L" + getTestName().substring(4) };
   }
@@ -339,46 +341,46 @@ public abstract class IRTests {
     return new String[] { "L" + pkgName + "/" + getTestName().substring(4) };
   }
 
-  protected abstract AbstractAnalysisEngine getAnalysisEngine(String[] mainClassDescriptors, Collection<String> sources, List<String> libs);
+  protected abstract AbstractAnalysisEngine getAnalysisEngine(String[] mainClassDescriptors, List<String> libs);
 
   public Pair runTest(Collection<String> sources, List<String> libs, String[] mainClassDescriptors, List<? extends IRAssertion> ca,
       boolean assertReachable) {
-      AbstractAnalysisEngine engine = getAnalysisEngine(mainClassDescriptors, sources, libs);
+    AbstractAnalysisEngine engine = getAnalysisEngine(mainClassDescriptors, libs);
 
-      CallGraph callGraph;
-      try {
-        callGraph = engine.buildDefaultCallGraph();
-        System.err.println(callGraph.toString());
+    CallGraph callGraph;
+    try {
+      callGraph = engine.buildDefaultCallGraph();
+      System.err.println(callGraph.toString());
 
-        // If we've gotten this far, IR has been produced.
-        dumpIR(callGraph, sources, assertReachable);
+      // If we've gotten this far, IR has been produced.
+      dumpIR(callGraph, sources, assertReachable);
 
-        // Now check any assertions as to source mapping
-        for (IRAssertion IRAssertion : ca) {
-          IRAssertion.check(callGraph);
-        }
-
-        return Pair.make(callGraph, engine.getPointerAnalysis());
-      } catch (IllegalArgumentException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      } catch (CancelException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      } catch (IOException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
+      // Now check any assertions as to source mapping
+      for (IRAssertion IRAssertion : ca) {
+        IRAssertion.check(callGraph);
       }
 
-      return null;
-}
+      return Pair.make(callGraph, engine.getPointerAnalysis());
+    } catch (IllegalArgumentException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    } catch (CancelException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    } catch (IOException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+
+    return null;
+  }
 
   protected static void dumpIR(CallGraph cg, Collection<String> sources, boolean assertReachable) throws IOException {
     Set<String> sourcePaths = HashSetFactory.make();
-    for(String src : sources) {
-      sourcePaths.add(src.substring(src.lastIndexOf(File.separator)+1));
+    for (String src : sources) {
+      sourcePaths.add(src.substring(src.lastIndexOf(File.separator) + 1));
     }
-    
+
     Set<IMethod> unreachable = HashSetFactory.make();
     IClassHierarchy cha = cg.getClassHierarchy();
     IClassLoader sourceLoader = cha.getLoader(JavaSourceAnalysisScope.SOURCE);
@@ -396,8 +398,8 @@ public abstract class IRTests {
           Iterator nodeIter = cg.getNodes(m.getReference()).iterator();
           if (!nodeIter.hasNext()) {
             if (m instanceof AstMethod) {
-              String fn = ((AstClass)m.getDeclaringClass()).getSourcePosition().getURL().getFile();
-              if (sourcePaths.contains(fn.substring(fn.lastIndexOf(File.separator)+1))) {
+              String fn = ((AstClass) m.getDeclaringClass()).getSourcePosition().getURL().getFile();
+              if (sourcePaths.contains(fn.substring(fn.lastIndexOf(File.separator) + 1))) {
                 System.err.println(("Method " + m.getReference() + " not reachable?"));
                 unreachable.add(m);
               }
@@ -417,8 +419,9 @@ public abstract class IRTests {
 
   /**
    * 
-   * @param srcMethodDescriptor a full method descriptor of the form ldr#type#methName#methSig example:
-   *          Source#Simple1#main#([Ljava/lang/String;)V
+   * @param srcMethodDescriptor
+   *          a full method descriptor of the form ldr#type#methName#methSig
+   *          example: Source#Simple1#main#([Ljava/lang/String;)V
    * @param cha
    * @return
    */

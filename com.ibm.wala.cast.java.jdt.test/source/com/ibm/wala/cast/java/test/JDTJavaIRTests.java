@@ -37,7 +37,6 @@
  */
 package com.ibm.wala.cast.java.test;
 
-import java.util.Collection;
 import java.util.List;
 
 import com.ibm.wala.cast.java.jdt.test.Activator;
@@ -47,24 +46,24 @@ import com.ibm.wala.ide.tests.util.EclipseTestUtil.ZippedProjectData;
 public class JDTJavaIRTests extends JavaIRTests {
 
   public static final String PROJECT_NAME = "com.ibm.wala.cast.java.test.data";
- 
+
   public static final String PROJECT_ZIP = "test_project.zip";
-  
+
   public static final ZippedProjectData PROJECT = new ZippedProjectData(Activator.getDefault(), PROJECT_NAME, PROJECT_ZIP);
-  
+
   private final ZippedProjectData project;
 
   public JDTJavaIRTests() {
     this(PROJECT);
   }
-  
+
   private JDTJavaIRTests(ZippedProjectData project) {
     super(project.projectName);
     this.project = project;
-   }
+  }
 
   @Override
-  protected AbstractAnalysisEngine getAnalysisEngine(final String[] mainClassDescriptors, Collection<String> sources, List<String> libs) {
-    return JDTJavaTest.makeAnalysisEngine(mainClassDescriptors, sources, libs, project);
+  protected AbstractAnalysisEngine getAnalysisEngine(final String[] mainClassDescriptors, List<String> libs) {
+    return JDTJavaTest.makeAnalysisEngine(mainClassDescriptors, libs, project);
   }
 }
