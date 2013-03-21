@@ -298,6 +298,10 @@ public final class TypeReference implements Serializable {
 
   public final static TypeReference JavaUtilMap = findOrCreate(ClassLoaderReference.Primordial, JavaUtilMapName);
 
+  private final static TypeName JavaUtilListName = TypeName.string2TypeName("Ljava/util/List");
+
+  public final static TypeReference JavaUtilList = findOrCreate(ClassLoaderReference.Primordial, JavaUtilListName);
+
   private final static TypeName JavaUtilHashSetName = TypeName.string2TypeName("Ljava/util/HashSet");
 
   public final static TypeReference JavaUtilHashSet = findOrCreate(ClassLoaderReference.Primordial, JavaUtilHashSetName);
