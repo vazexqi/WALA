@@ -26,7 +26,6 @@ import org.eclipse.jface.window.ApplicationWindow;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.ui.PlatformUI;
 
 import com.ibm.wala.util.PlatformUtil;
 import com.ibm.wala.util.WalaException;
@@ -105,47 +104,29 @@ public class SWTTreeViewer extends AbstractJFaceRunner {
     setApplicationWindow(w);
     w.setBlockOnOpen(true);
 
-    if (PlatformUI.isWorkbenchRunning()) {
-      // run the code on the UI thread
-      Display d = PlatformUI.getWorkbench().getDisplay();
+    if (PlatformUtil.onMacOSX()) {
+      // the Mac does not like running the Window code in another thread
+      // side-effect: we always block input on Mac
+      w.open();
+      Display.getCurrent().dispose();
+    } else {
       Runnable r = new Runnable() {
         public void run() {
-          try {
-            w.open();
-          } catch (Exception e) {
-            e.printStackTrace();
-          }
+          w.open();
+          Display.getCurrent().dispose();
         }
       };
+      Thread t = new Thread(r);
+      t.start();
       if (isBlockInput()) {
-        d.syncExec(r);
-      } else {
-        d.asyncExec(r);
-      }
-    } else {
-      if (PlatformUtil.onMacOSX()) {
-        // the Mac does not like running the Window code in another thread
-        // side-effect: we always block input on Mac
-        w.open();
-        Display.getCurrent().dispose();
-      } else {
-        Runnable r = new Runnable() {
-          public void run() {
-            w.open();
-            Display.getCurrent().dispose();
-          }
-        };
-        Thread t = new Thread(r);
-        t.start();
-        if (isBlockInput()) {
-          try {
-            t.join();
-          } catch (InterruptedException e) {
-            throw new WalaException("unexpected interruption", e);
-          }
+        try {
+          t.join();
+        } catch (InterruptedException e) {
+          throw new WalaException("unexpected interruption", e);
         }
       }
     }
+    // }
   }
 
   /**
@@ -162,7 +143,7 @@ public class SWTTreeViewer extends AbstractJFaceRunner {
   /**
    * @author sfink
    * 
-   * An SWT window to visualize a graph
+   *         An SWT window to visualize a graph
    */
   private class GraphViewer extends ApplicationWindow {
 
@@ -188,7 +169,9 @@ public class SWTTreeViewer extends AbstractJFaceRunner {
     }
 
     /*
-     * @see org.eclipse.jface.window.Window#createContents(org.eclipse.swt.widgets.Composite)
+     * @see
+     * org.eclipse.jface.window.Window#createContents(org.eclipse.swt.widgets
+     * .Composite)
      */
     @Override
     protected Control createContents(Composite parent) {
@@ -211,7 +194,8 @@ public class SWTTreeViewer extends AbstractJFaceRunner {
     /**
      * @author sfink
      * 
-     * Simple wrapper around an EObjectGraph to provide content for a tree viewer.
+     *         Simple wrapper around an EObjectGraph to provide content for a
+     *         tree viewer.
      */
     private class GraphContentProvider implements ITreeContentProvider {
 
@@ -223,15 +207,18 @@ public class SWTTreeViewer extends AbstractJFaceRunner {
       }
 
       /*
-       * @see org.eclipse.jface.viewers.IContentProvider#inputChanged(org.eclipse.jface.viewers.Viewer,
-       *      java.lang.Object, java.lang.Object)
+       * @see
+       * org.eclipse.jface.viewers.IContentProvider#inputChanged(org.eclipse
+       * .jface.viewers.Viewer, java.lang.Object, java.lang.Object)
        */
       public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {
         // for now do nothing, since we're not dealing with listeners
       }
 
       /*
-       * @see org.eclipse.jface.viewers.ITreeContentProvider#getChildren(java.lang.Object)
+       * @see
+       * org.eclipse.jface.viewers.ITreeContentProvider#getChildren(java.lang
+       * .Object)
        */
       public Object[] getChildren(Object parentElement) {
 
@@ -244,7 +231,9 @@ public class SWTTreeViewer extends AbstractJFaceRunner {
       }
 
       /*
-       * @see org.eclipse.jface.viewers.ITreeContentProvider#getParent(java.lang.Object)
+       * @see
+       * org.eclipse.jface.viewers.ITreeContentProvider#getParent(java.lang.
+       * Object)
        */
       public Object getParent(Object element) {
         // TODO Auto-generated method stub
@@ -253,14 +242,18 @@ public class SWTTreeViewer extends AbstractJFaceRunner {
       }
 
       /*
-       * @see org.eclipse.jface.viewers.ITreeContentProvider#hasChildren(java.lang.Object)
+       * @see
+       * org.eclipse.jface.viewers.ITreeContentProvider#hasChildren(java.lang
+       * .Object)
        */
       public boolean hasChildren(Object element) {
         return graph.getSuccNodeCount(element) > 0;
       }
 
       /*
-       * @see org.eclipse.jface.viewers.IStructuredContentProvider#getElements(java.lang.Object)
+       * @see
+       * org.eclipse.jface.viewers.IStructuredContentProvider#getElements(java
+       * .lang.Object)
        */
       public Object[] getElements(Object inputElement) {
         Collection<? extends Object> roots = getRootsInput();
