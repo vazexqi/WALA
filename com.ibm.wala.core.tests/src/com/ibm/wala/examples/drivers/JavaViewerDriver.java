@@ -1,8 +1,13 @@
 package com.ibm.wala.examples.drivers;
 
+import java.awt.BorderLayout;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.Properties;
+
+import javax.swing.JFrame;
 
 import com.ibm.wala.core.tests.callGraph.CallGraphTestUtil;
 import com.ibm.wala.ipa.callgraph.AnalysisCache;
@@ -21,9 +26,11 @@ import com.ibm.wala.util.io.FileProvider;
 import com.ibm.wala.viz.viewer.WalaViewer;
 
 /**
- * Allows viewing the ClassHeirarcy, CallGraph and Pointer Analysis built from a given classpath.
+ * Allows viewing the ClassHeirarcy, CallGraph and Pointer Analysis built from a
+ * given classpath.
+ * 
  * @author yinnonh
- *
+ * 
  */
 public class JavaViewerDriver {
   public static void main(String[] args) throws ClassHierarchyException, IOException, CallGraphBuilderCancelException {
@@ -31,14 +38,15 @@ public class JavaViewerDriver {
     validateCommandLine(p);
     run(p.getProperty("appClassPath"), p.getProperty("exclusionFile", CallGraphTestUtil.REGRESSION_EXCLUSIONS));
   }
-  
+
   public static void validateCommandLine(Properties p) {
     if (p.get("appClassPath") == null) {
       throw new UnsupportedOperationException("expected command-line to include -appClassPath");
     }
   }
 
-  private static void run(String classPath, String exclusionFilePath) throws IOException, ClassHierarchyException, CallGraphBuilderCancelException{
+  private static void run(String classPath, String exclusionFilePath) throws IOException, ClassHierarchyException,
+      CallGraphBuilderCancelException {
 
     File exclusionFile = (new FileProvider()).getFile(exclusionFilePath);
     AnalysisScope scope = AnalysisScopeReader.makeJavaBinaryAnalysisScope(classPath, exclusionFile != null ? exclusionFile
@@ -53,10 +61,26 @@ public class JavaViewerDriver {
     // build the call graph
     // //
     com.ibm.wala.ipa.callgraph.CallGraphBuilder builder = Util.makeZeroCFABuilder(options, new AnalysisCache(), cha, scope);
-    CallGraph cg = builder.makeCallGraph(options, null);
+    final CallGraph cg = builder.makeCallGraph(options, null);
 
-    PointerAnalysis pa = builder.getPointerAnalysis();
-    new WalaViewer(cg, pa);
-    
+    final PointerAnalysis pa = builder.getPointerAnalysis();
+    JFrame frame = new JFrame() {
+      {
+        setSize(600, 800);
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
+        addWindowListener(new WindowAdapter() {
+          @Override
+          public void windowClosing(WindowEvent event) {
+            System.exit(0);
+          }
+        });
+        setTitle("Wala viewer");
+        setLayout(new BorderLayout());
+        add(new WalaViewer(cg, pa), BorderLayout.CENTER);
+        pack();
+        setVisible(true);
+      }
+    };
+
   }
 }
