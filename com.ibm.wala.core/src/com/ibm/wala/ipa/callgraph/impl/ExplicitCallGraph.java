@@ -298,6 +298,11 @@ public class ExplicitCallGraph extends BasicCallGraph<SSAContextInterpreter> imp
     }
 
     public IR getIR() {
+      if (getMethod().isSynthetic()) {
+        // disable local cache in this case, as context interpreters
+        // do weird things like mutate IRs
+        return getCallGraph().getInterpreter(this).getIR(this);
+      }
       IR ir = this.ir.get();
       if (ir == null) {
         ir = getCallGraph().getInterpreter(this).getIR(this);
@@ -307,6 +312,11 @@ public class ExplicitCallGraph extends BasicCallGraph<SSAContextInterpreter> imp
     }
 
     public DefUse getDU() {
+      if (getMethod().isSynthetic()) {
+        // disable local cache in this case, as context interpreters
+        // do weird things like mutate IRs
+        return getCallGraph().getInterpreter(this).getDU(this);
+      }
       DefUse du = this.du.get();
       if (du == null) {
         du = getCallGraph().getInterpreter(this).getDU(this);

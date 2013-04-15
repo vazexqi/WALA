@@ -42,6 +42,7 @@ import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.ssa.IRFactory;
 import com.ibm.wala.util.CancelException;
+import com.ibm.wala.util.WalaException;
 
 /**
  * TODO this class is a mess. rewrite.
@@ -77,7 +78,7 @@ public class JSCallGraphBuilderUtil extends com.ibm.wala.cast.js.ipa.callgraph.J
 
   }
 
-  public static JSCFABuilder makeScriptCGBuilder(String dir, String name, CGBuilderType builderType) throws IOException {
+  public static JSCFABuilder makeScriptCGBuilder(String dir, String name, CGBuilderType builderType) throws IOException, WalaException {
     JavaScriptLoaderFactory loaders = JSCallGraphBuilderUtil.makeLoaders();
 
     AnalysisScope scope = makeScriptScope(dir, name, loaders);
@@ -102,16 +103,16 @@ public class JSCallGraphBuilderUtil extends com.ibm.wala.cast.js.ipa.callgraph.J
     return scope;
   }
 
-  public static JSCFABuilder makeScriptCGBuilder(String dir, String name) throws IOException {
+  public static JSCFABuilder makeScriptCGBuilder(String dir, String name) throws IOException, WalaException {
     return makeScriptCGBuilder(dir, name, CGBuilderType.ZERO_ONE_CFA);
   }
 
-  public static CallGraph makeScriptCG(String dir, String name) throws IOException, IllegalArgumentException, CancelException {
+  public static CallGraph makeScriptCG(String dir, String name) throws IOException, IllegalArgumentException, CancelException, WalaException {
     return makeScriptCG(dir, name, CGBuilderType.ZERO_ONE_CFA);
   }
 
   public static CallGraph makeScriptCG(String dir, String name, CGBuilderType builderType) throws IOException,
-      IllegalArgumentException, CancelException {
+      IllegalArgumentException, CancelException, WalaException {
     PropagationCallGraphBuilder b = makeScriptCGBuilder(dir, name, builderType);
     CallGraph CG = b.makeCallGraph(b.getOptions());
     // dumpCG(b.getPointerAnalysis(), CG);
@@ -119,24 +120,24 @@ public class JSCallGraphBuilderUtil extends com.ibm.wala.cast.js.ipa.callgraph.J
   }
 
   public static CallGraph makeScriptCG(SourceModule[] scripts, CGBuilderType builderType, IRFactory irFactory) throws IOException, IllegalArgumentException,
-      CancelException {
+      CancelException, WalaException {
     PropagationCallGraphBuilder b = makeCGBuilder(makeLoaders(), scripts, builderType, irFactory);
     CallGraph CG = b.makeCallGraph(b.getOptions());
     // dumpCG(b.getPointerAnalysis(), CG);
     return CG;
   }
 
-  public static JSCFABuilder makeHTMLCGBuilder(URL url) throws IOException {
+  public static JSCFABuilder makeHTMLCGBuilder(URL url) throws IOException, WalaException {
     return makeHTMLCGBuilder(url, CGBuilderType.ZERO_ONE_CFA);
   }
 
-  public static JSCFABuilder makeHTMLCGBuilder(URL url, CGBuilderType builderType) throws IOException {
+  public static JSCFABuilder makeHTMLCGBuilder(URL url, CGBuilderType builderType) throws IOException, WalaException {
     JavaScriptLoader.addBootstrapFile(WebUtil.preamble);
     SourceModule[] scripts;
     IRFactory irFactory = AstIRFactory.makeDefaultFactory();
     JavaScriptLoaderFactory loaders = new WebPageLoaderFactory(translatorFactory, preprocessor);
     try {
-      Set<MappedSourceModule> script = WebUtil.extractScriptFromHTML(url);
+      Set<MappedSourceModule> script = WebUtil.extractScriptFromHTML(url).fst;
       scripts = script.toArray(new SourceModule[script.size()]);
     } catch (Error e) {
       SourceModule dummy = new SourceURLModule(url);
@@ -148,7 +149,7 @@ public class JSCallGraphBuilderUtil extends com.ibm.wala.cast.js.ipa.callgraph.J
     return builder;
   }
 
-  public static CallGraph makeHTMLCG(URL url) throws IOException, IllegalArgumentException, CancelException {
+  public static CallGraph makeHTMLCG(URL url) throws IOException, IllegalArgumentException, CancelException, WalaException {
     PropagationCallGraphBuilder b = makeHTMLCGBuilder(url);
     CallGraph CG = b.makeCallGraph(b.getOptions());
     dumpCG(b.getPointerAnalysis(), CG);
@@ -156,18 +157,18 @@ public class JSCallGraphBuilderUtil extends com.ibm.wala.cast.js.ipa.callgraph.J
   }
 
   public static CallGraph makeHTMLCG(URL url, CGBuilderType builderType) throws IOException, IllegalArgumentException,
-      CancelException {
+      CancelException, WalaException {
     PropagationCallGraphBuilder b = makeHTMLCGBuilder(url, builderType);
     CallGraph CG = b.makeCallGraph(b.getOptions());
     return CG;
   }
 
-  public static JSCFABuilder makeCGBuilder(JavaScriptLoaderFactory loaders, SourceModule[] scripts, CGBuilderType builderType, IRFactory irFactory) throws IOException {
+  public static JSCFABuilder makeCGBuilder(JavaScriptLoaderFactory loaders, SourceModule[] scripts, CGBuilderType builderType, IRFactory irFactory) throws IOException, WalaException {
     AnalysisScope scope = makeScope(scripts, loaders, JavaScriptLoader.JS);
     return makeCG(loaders, scope, builderType, irFactory);
   }
 
-  protected static JSCFABuilder makeCG(JavaScriptLoaderFactory loaders, AnalysisScope scope, CGBuilderType builderType, IRFactory irFactory) throws IOException {
+  protected static JSCFABuilder makeCG(JavaScriptLoaderFactory loaders, AnalysisScope scope, CGBuilderType builderType, IRFactory irFactory) throws IOException, WalaException {
     try {
       IClassHierarchy cha = makeHierarchy(scope, loaders);
       com.ibm.wala.cast.js.util.Util.checkForFrontEndErrors(cha);

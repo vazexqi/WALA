@@ -74,12 +74,14 @@ import com.ibm.wala.ssa.SymbolTable;
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
+import com.ibm.wala.util.collections.HashMapFactory;
 import com.ibm.wala.util.collections.HashSetFactory;
 import com.ibm.wala.util.collections.MapUtil;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.graph.INodeWithNumber;
 import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
+import com.ibm.wala.util.graph.traverse.DFS;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.IntSetUtil;
 import com.ibm.wala.util.intset.MutableIntSet;
@@ -148,7 +150,7 @@ public abstract class AstTranslator extends CAstVisitor<AstTranslator.WalkContex
    * been processed
    */
   protected abstract void defineFunction(CAstEntity N, WalkContext definingContext, AbstractCFG cfg, SymbolTable symtab,
-      boolean hasCatchBlock, TypeReference[][] caughtTypes, boolean hasMonitorOp, AstLexicalInformation lexicalInfo,
+      boolean hasCatchBlock, Map<IBasicBlock, TypeReference[]> catchTypes, boolean hasMonitorOp, AstLexicalInformation lexicalInfo,
       DebuggingInformation debugInfo);
 
   /**
@@ -824,7 +826,7 @@ public abstract class AstTranslator extends CAstVisitor<AstTranslator.WalkContex
             setCurrentBlockAsHandler();
             e = sourceContext.astContext.currentScope().allocateTempValue();
             addInstruction(insts.GetCaughtExceptionInstruction(startBlock.getNumber(), e));
-            sourceContext.astContext.setCatchType(startBlock.getNumber(), defaultCatchType());
+            sourceContext.astContext.setCatchType(startBlock, defaultCatchType());
           }
 
           while (sourceContext != null && (targetContext == null || !targetContext.covers(sourceContext))) {
@@ -880,6 +882,8 @@ public abstract class AstTranslator extends CAstVisitor<AstTranslator.WalkContex
 
     private final List<PreBasicBlock> blocks = new ArrayList<PreBasicBlock>();
 
+    private PreBasicBlock entryBlock;
+    
     private final Map<CAstNode, PreBasicBlock> nodeToBlock = new LinkedHashMap<CAstNode, PreBasicBlock>();
 
     private final Map<Object, Set<Pair<PreBasicBlock, Boolean>>> delayedEdges = new LinkedHashMap<Object, Set<Pair<PreBasicBlock, Boolean>>>();
@@ -973,6 +977,7 @@ public abstract class AstTranslator extends CAstVisitor<AstTranslator.WalkContex
     }
 
     void makeEntryBlock(PreBasicBlock bb) {
+      entryBlock = bb;
       bb.makeEntryBlock();
     }
 
@@ -1173,56 +1178,121 @@ public abstract class AstTranslator extends CAstVisitor<AstTranslator.WalkContex
 
     private final SymbolTable symtab;
 
+    private interface EdgeOperation {
+      void act(PreBasicBlock src, PreBasicBlock dst);
+    }
+    
+    private void transferEdges(Set<PreBasicBlock> blocks, 
+                                      IncipientCFG icfg,
+                                      EdgeOperation normal,
+                                      EdgeOperation except) {
+      for (PreBasicBlock src : blocks) {
+        for (Iterator j = icfg.getSuccNodes(src); j.hasNext();) {
+          PreBasicBlock dst = (PreBasicBlock) j.next();
+          if (isCatchBlock(dst.getNumber()) || (dst.isExitBlock() && icfg.exceptionalToExit.contains(src))) {
+            except.act(src, dst);
+          }
+
+          if (dst.isExitBlock() ? icfg.normalToExit.contains(src) : !isCatchBlock(dst.getNumber())) {
+            normal.act(src, dst);
+          }
+        }
+      }
+    }
+    
     AstCFG(CAstEntity n, IncipientCFG icfg, SymbolTable symtab) {
       super(null);
+      
+      Set<PreBasicBlock> liveBlocks = DFS.getReachableNodes(icfg, Collections.singleton(icfg.entryBlock));
       List<PreBasicBlock> blocks = icfg.blocks;
-
+      boolean hasDeadBlocks = blocks.size() > liveBlocks.size();
+      
       this.symtab = symtab;
       functionName = n.getName();
-      instructionToBlockMap = new int[blocks.size()];
+      instructionToBlockMap = new int[liveBlocks.size()];
 
-      for (int i = 0; i < blocks.size(); i++)
-        instructionToBlockMap[i] = blocks.get(i).getLastInstructionIndex();
-
-      for (int i = 0; i < blocks.size(); i++) {
+      final Map<PreBasicBlock, Collection<PreBasicBlock>> normalEdges = 
+        hasDeadBlocks? HashMapFactory.<PreBasicBlock,Collection<PreBasicBlock>>make() : null;
+      final Map<PreBasicBlock, Collection<PreBasicBlock>> exceptionalEdges = 
+        hasDeadBlocks? HashMapFactory.<PreBasicBlock,Collection<PreBasicBlock>>make() : null;
+      if (hasDeadBlocks) {
+        transferEdges(liveBlocks, icfg, new EdgeOperation() {
+          public void act(PreBasicBlock src, PreBasicBlock dst) {
+            if (! normalEdges.containsKey(src)) {
+              normalEdges.put(src, HashSetFactory.<PreBasicBlock>make());
+            }
+            normalEdges.get(src).add(dst);
+          }
+        }, new EdgeOperation() {
+          public void act(PreBasicBlock src, PreBasicBlock dst) {
+            if (! exceptionalEdges.containsKey(src)) {
+              exceptionalEdges.put(src, HashSetFactory.<PreBasicBlock>make());
+            }
+            exceptionalEdges.get(src).add(dst);
+          }         
+        });
+      }
+      
+      for (int i = 0, blockNumber = 0; i < blocks.size(); i++) {
+        PreBasicBlock pb = blocks.get(i);
         PreBasicBlock block = blocks.get(i);
-        this.addNode(block);
-        if (block.isCatchBlock()) {
-          setCatchBlock(i);
-        }
+        block.setGraphNodeId(-1);
+        if (liveBlocks.contains(pb)) {
+          instructionToBlockMap[blockNumber] = block.getLastInstructionIndex();
 
-        if (DEBUG_CFG)
-          System.err.println(("added " + blocks.get(i) + " to final CFG as " + getNumber(blocks.get(i))));
+          this.addNode(block);
+          if (block.isCatchBlock()) {
+            setCatchBlock(blockNumber);
+          }
+
+          if (DEBUG_CFG) {
+            System.err.println(("added " + blocks.get(i) + " to final CFG as " + getNumber(blocks.get(i))));
+          } 
+          
+          blockNumber++;
+        }
       }
       if (DEBUG_CFG)
         System.err.println((getMaxNumber() + " blocks total"));
 
       init();
 
-      for (int i = 0; i < blocks.size(); i++) {
-        PreBasicBlock src = blocks.get(i);
-        for (Iterator j = icfg.getSuccNodes(src); j.hasNext();) {
-          PreBasicBlock dst = (PreBasicBlock) j.next();
-          if (isCatchBlock(dst.getNumber()) || (dst.isExitBlock() && icfg.exceptionalToExit.contains(src))) {
-            if (DEBUG_CFG)
-              System.err.println(("exceptonal edge " + src + " -> " + dst));
-            addExceptionalEdge(src, dst);
-          }
-
-          if (dst.isExitBlock() ? icfg.normalToExit.contains(src) : !isCatchBlock(dst.getNumber())) {
-            if (DEBUG_CFG)
-              System.err.println(("normal edge " + src + " -> " + dst));
-            addNormalEdge(src, dst);
+      if (hasDeadBlocks) {
+        for (int i = 0; i < blocks.size(); i++) {
+          PreBasicBlock src = blocks.get(i);
+          if (liveBlocks.contains(src)) {
+            if (normalEdges.containsKey(src)) {
+              for(PreBasicBlock succ : normalEdges.get(src)) {
+                addNormalEdge(src, succ);
+              }
+            }
+            if (exceptionalEdges.containsKey(src)) {
+              for(PreBasicBlock succ : exceptionalEdges.get(src)) {
+                addExceptionalEdge(src, succ);
+              }
+            }
           }
         }
+      } else {
+        transferEdges(liveBlocks, icfg, new EdgeOperation() {
+          public void act(PreBasicBlock src, PreBasicBlock dst) {
+            addNormalEdge(src, dst);
+          }
+        }, new EdgeOperation() {
+          public void act(PreBasicBlock src, PreBasicBlock dst) {
+            addExceptionalEdge(src, dst);
+          }
+        });
       }
-
+      
       int x = 0;
       instructions = new SSAInstruction[icfg.currentInstruction];
       for (int i = 0; i < blocks.size(); i++) {
-        List<SSAInstruction> bi = blocks.get(i).instructions();
-        for (int j = 0; j < bi.size(); j++) {
-          instructions[x++] = bi.get(j);
+        if (liveBlocks.contains(blocks.get(i))) {
+          List<SSAInstruction> bi = blocks.get(i).instructions();
+          for (int j = 0; j < bi.size(); j++) {
+            instructions[x++] = bi.get(j);
+          }
         }
       }
     }
@@ -2040,11 +2110,11 @@ public abstract class AstTranslator extends CAstVisitor<AstTranslator.WalkContex
 
     UnwindState getUnwindState();
 
-    void setCatchType(int blockNumber, TypeReference catchType);
+    void setCatchType(IBasicBlock bb, TypeReference catchType);
 
     void setCatchType(CAstNode catchNode, TypeReference catchType);
 
-    TypeReference[][] getCatchTypes();
+    Map<IBasicBlock,TypeReference[]> getCatchTypes();
 
     void addEntityName(CAstEntity e, String name);
     
@@ -2115,15 +2185,15 @@ public abstract class AstTranslator extends CAstVisitor<AstTranslator.WalkContex
       return parent.getUnwindState();
     }
 
-    public void setCatchType(int blockNumber, TypeReference catchType) {
-      parent.setCatchType(blockNumber, catchType);
+    public void setCatchType(IBasicBlock bb, TypeReference catchType) {
+      parent.setCatchType(bb, catchType);
     }
 
     public void setCatchType(CAstNode catchNode, TypeReference catchType) {
       parent.setCatchType(catchNode, catchType);
     }
 
-    public TypeReference[][] getCatchTypes() {
+    public Map<IBasicBlock, TypeReference[]> getCatchTypes() {
       return parent.getCatchTypes();
     }
 
@@ -2216,7 +2286,7 @@ public abstract class AstTranslator extends CAstVisitor<AstTranslator.WalkContex
 
     private final IncipientCFG cfg;
 
-    private TypeReference[][] catchTypes = new TypeReference[0][];
+    private final Map<IBasicBlock,TypeReference[]> catchTypes = HashMapFactory.make();
 
     Set<Pair<Pair<String, String>, Integer>> exposedReads;
     Set<Pair<Pair<String, String>, Integer>> exposedWrites;
@@ -2292,20 +2362,14 @@ public abstract class AstTranslator extends CAstVisitor<AstTranslator.WalkContex
     }
 
     public void setCatchType(CAstNode catchNode, TypeReference catchType) {
-      setCatchType(cfg.getBlock(catchNode).getNumber(), catchType);
+      setCatchType(cfg.getBlock(catchNode), catchType);
     }
 
-    public void setCatchType(int blockNumber, TypeReference catchType) {
-      if (catchTypes.length <= blockNumber) {
-        TypeReference[][] data = new TypeReference[blockNumber + 1][];
-        System.arraycopy(catchTypes, 0, data, 0, catchTypes.length);
-        catchTypes = data;
-      }
-
-      if (catchTypes[blockNumber] == null) {
-        catchTypes[blockNumber] = new TypeReference[] { catchType };
+    public void setCatchType(IBasicBlock bb, TypeReference catchType) {
+      if (! catchTypes.containsKey(bb)) {
+        catchTypes.put(bb, new TypeReference[] { catchType });
       } else {
-        TypeReference[] data = catchTypes[blockNumber];
+        TypeReference[] data = catchTypes.get(bb);
 
         for (int i = 0; i < data.length; i++) {
           if (data[i] == catchType) {
@@ -2317,11 +2381,11 @@ public abstract class AstTranslator extends CAstVisitor<AstTranslator.WalkContex
         System.arraycopy(data, 0, newData, 0, data.length);
         newData[data.length] = catchType;
 
-        catchTypes[blockNumber] = newData;
+        catchTypes.put(bb, newData);
       }
     }
 
-    public TypeReference[][] getCatchTypes() {
+    public Map<IBasicBlock,TypeReference[]> getCatchTypes() {
       return catchTypes;
     }
     
@@ -2964,7 +3028,7 @@ public abstract class AstTranslator extends CAstVisitor<AstTranslator.WalkContex
 
     // create code entry stuff for this entity
     SymbolTable symtab = ((AbstractScope) functionContext.currentScope()).getUnderlyingSymtab();
-    TypeReference[][] catchTypes = functionContext.getCatchTypes();
+    Map<IBasicBlock,TypeReference[]> catchTypes = functionContext.getCatchTypes();
     AstCFG cfg = new AstCFG(n, functionContext.cfg(), symtab);
     Position[] line = functionContext.cfg().getLinePositionMap();
     boolean katch = functionContext.cfg().hasCatchBlock();
@@ -4191,13 +4255,13 @@ public abstract class AstTranslator extends CAstVisitor<AstTranslator.WalkContex
       return null;
     }
 
-    public void setCatchType(int blockNumber, TypeReference catchType) {
+    public void setCatchType(IBasicBlock bb, TypeReference catchType) {
     }
 
     public void setCatchType(CAstNode castNode, TypeReference catchType) {
     }
 
-    public TypeReference[][] getCatchTypes() {
+    public Map<IBasicBlock, TypeReference[]> getCatchTypes() {
       return null;
     }
     

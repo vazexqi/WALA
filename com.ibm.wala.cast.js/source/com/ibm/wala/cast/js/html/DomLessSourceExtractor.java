@@ -36,6 +36,9 @@ public class DomLessSourceExtractor extends JSSourceExtractor {
   }
   
   protected static class HtmlCallback implements IGeneratorCallback{
+    
+    public static final boolean DEBUG = false;
+    
     protected final URL entrypointUrl;
     protected final IUrlResolver urlResolver;
 
@@ -132,7 +135,9 @@ public class DomLessSourceExtractor extends JSSourceExtractor {
         url = new URL(entrypointUrl, "#" + tag.getElementPosition().getFirstOffset());
       } catch (MalformedURLException e) {
         // TODO Auto-generated catch block
-        e.printStackTrace();
+        if (DEBUG) {
+          e.printStackTrace();
+        }
       }
       Position pos = a.getValue().snd;
       String attName = a.getKey();
@@ -172,7 +177,9 @@ public class DomLessSourceExtractor extends JSSourceExtractor {
         }
 
       } catch (IOException e) {
-        System.err.println("Error reading script file: " + e.getMessage());
+        if (DEBUG) {
+          System.err.println("Error reading script file: " + e.getMessage());
+        }
       }
     }
 
@@ -183,10 +190,23 @@ public class DomLessSourceExtractor extends JSSourceExtractor {
         return;
       }
 
-      InputStream scriptInputStream = scriptSrc.openConnection().getInputStream();
-      try{
+      InputStream scriptInputStream;
+      try {
+         scriptInputStream = scriptSrc.openConnection().getInputStream();
+      } catch (Exception e) {
+        //it looks like this happens when we can't resolve the url?
+        if (DEBUG) {
+          System.err.println("Error reading script: " + scriptSrc);
+          System.err.println(e);
+          e.printStackTrace(System.err);
+        }
+        return;
+      }
+      
+      BufferedReader scriptReader = null;
+      try {
         String line;
-        BufferedReader scriptReader = new BufferedReader(new UnicodeReader(scriptInputStream, "UTF8"));
+        scriptReader = new BufferedReader(new UnicodeReader(scriptInputStream, "UTF8"));
         StringBuffer x = new StringBuffer();
         while ((line = scriptReader.readLine()) != null) {
           x.append(line).append("\n");
@@ -195,7 +215,9 @@ public class DomLessSourceExtractor extends JSSourceExtractor {
         scriptRegion.println(x.toString(), scriptTag.getElementPosition(), scriptSrc);
 
       } finally {
-        scriptInputStream.close();
+        if (scriptReader != null) {
+          scriptReader.close();
+        }
       }
     }
 
@@ -225,6 +247,11 @@ public class DomLessSourceExtractor extends JSSourceExtractor {
     }
   }
 
+  /**
+   * for storing the name of the temp file created by extractSources()
+   */
+  private File tempFile;
+  
   public Set<MappedSourceModule> extractSources(URL entrypointUrl, IHtmlParser htmlParser, IUrlResolver urlResolver)
   throws IOException, Error {
 
@@ -237,6 +264,7 @@ public class DomLessSourceExtractor extends JSSourceExtractor {
     
     // writing the final region into one SourceFileModule.
     File outputFile = createOutputFile(entrypointUrl, DELETE_UPON_EXIT, USE_TEMP_NAME);
+    tempFile = outputFile;
     FileMapping fileMapping = finalRegion.writeToFile(new PrintStream(outputFile));
     if (fileMapping == null) {
       fileMapping = new EmptyFileMapping();
@@ -278,6 +306,11 @@ public class DomLessSourceExtractor extends JSSourceExtractor {
     System.out.println(entry);
     entry.getMapping().dump(System.out);
     
+  }
+
+  @Override
+  public File getTempFile() {
+    return tempFile;
   }
 }
 

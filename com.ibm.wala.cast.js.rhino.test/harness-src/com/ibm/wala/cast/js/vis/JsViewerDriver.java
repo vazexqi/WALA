@@ -24,9 +24,10 @@ import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.util.CancelException;
+import com.ibm.wala.util.WalaException;
 
 public class JsViewerDriver extends JSCallGraphBuilderUtil {
-	public static void main(String args[]) throws ClassHierarchyException, IllegalArgumentException, IOException, CancelException, Error {
+	public static void main(String args[]) throws ClassHierarchyException, IllegalArgumentException, IOException, CancelException, Error, WalaException {
 
 		if (args.length != 1){
 			System.out.println("Usage: <URL of html page to analyze>");
