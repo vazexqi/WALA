@@ -11,6 +11,7 @@
 package com.ibm.wala.cast.java.test;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.List;
 
 import junit.framework.Assert;
@@ -31,7 +32,7 @@ import com.ibm.wala.ipa.cha.IClassHierarchy;
 
 public abstract class JDTJavaTest extends IRTests {
 
-  private final ZippedProjectData project;
+  protected final ZippedProjectData project;
 
   public JDTJavaTest(ZippedProjectData project) {
     super(project.projectName);
@@ -39,11 +40,13 @@ public abstract class JDTJavaTest extends IRTests {
   }
 
   @Override
-  protected AbstractAnalysisEngine getAnalysisEngine(final String[] mainClassDescriptors, List<String> libs) {
-    return makeAnalysisEngine(mainClassDescriptors, libs, project);
+  protected AbstractAnalysisEngine getAnalysisEngine(final String[] mainClassDescriptors, Collection<String> sources,
+      List<String> libs) {
+    return makeAnalysisEngine(mainClassDescriptors, sources, libs, project);
   }
 
-  static AbstractAnalysisEngine makeAnalysisEngine(final String[] mainClassDescriptors, List<String> libs, ZippedProjectData project) {
+  static AbstractAnalysisEngine makeAnalysisEngine(final String[] mainClassDescriptors, Collection<String> sources,
+      List<String> libs, ZippedProjectData project) {
     AbstractAnalysisEngine engine;
     try {
       engine = new JDTJavaSourceAnalysisEngine(project.projectName) {
@@ -69,5 +72,4 @@ public abstract class JDTJavaTest extends IRTests {
       return null;
     }
   }
-
 }

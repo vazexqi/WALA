@@ -37,6 +37,7 @@
  */
 package com.ibm.wala.cast.java.test;
 
+import java.util.Collection;
 import java.util.List;
 
 import com.ibm.wala.cast.java.jdt.test.Activator;
@@ -63,7 +64,9 @@ public class JDTJavaIRTests extends JavaIRTests {
   }
 
   @Override
-  protected AbstractAnalysisEngine getAnalysisEngine(final String[] mainClassDescriptors, List<String> libs) {
-    return JDTJavaTest.makeAnalysisEngine(mainClassDescriptors, libs, project);
+  protected AbstractAnalysisEngine getAnalysisEngine(final String[] mainClassDescriptors, Collection<String> sources,
+      List<String> libs) {
+    return JDTJavaTest.makeAnalysisEngine(mainClassDescriptors, sources, libs, project);
   }
+
 }
