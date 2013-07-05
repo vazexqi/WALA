@@ -1,3 +1,13 @@
+/*******************************************************************************
+ * Copyright (c) 2013 IBM Corporation.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *     IBM Corporation - initial API and implementation
+ *******************************************************************************/
 package com.ibm.wala.cast.js.test;
 
 import java.io.IOException;
@@ -8,7 +18,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.ibm.wala.cast.js.html.JSSourceExtractor;
-import com.ibm.wala.cast.js.ipa.callgraph.ForInContextSelector;
+import com.ibm.wala.cast.js.ipa.callgraph.PropertyNameContextSelector;
 import com.ibm.wala.cast.js.ipa.callgraph.JSCFABuilder;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.ContextSelector;
@@ -163,7 +173,7 @@ public abstract class TestForInLoopHack extends TestJSCallGraphShape {
   
   private void addHackedForInLoopSensitivity(JSCFABuilder builder) {
     final ContextSelector orig = builder.getContextSelector();
-    builder.setContextSelector(new ForInContextSelector(orig));
+    builder.setContextSelector(new PropertyNameContextSelector(builder.getAnalysisCache(), orig));
   }
 
 }

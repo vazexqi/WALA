@@ -83,6 +83,7 @@ public class PDFViewUtil {
       labelMap.put(bb, getNodeLabel(ir, bb));
     }
     NodeDecorator labels = new NodeDecorator() {
+      @Override
       public String getLabel(Object o) {
         return labelMap.get(o);
       }
@@ -105,6 +106,7 @@ public class PDFViewUtil {
       this.B = B;
     }
 
+    @Override
     public String getLabel(Object o) throws WalaException {
       return A.getLabel(o) + B.getLabel(o);
     }

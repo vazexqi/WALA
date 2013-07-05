@@ -1,3 +1,13 @@
+/*******************************************************************************
+ * Copyright (c) 2013 IBM Corporation.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *     IBM Corporation - initial API and implementation
+ *******************************************************************************/
 package com.ibm.wala.cast.js.test;
 
 import java.io.IOException;
@@ -31,7 +41,7 @@ public abstract class TestArgumentSensitivity extends TestJSCallGraphShape {
     new Object[] { "tests/args.js/a", new String[] { "tests/args.js/y", "tests/args.js/z", "!tests/args.js/wrong" } } };
 
   @Test public void testArgs() throws IOException, IllegalArgumentException, CancelException, ClassHierarchyException, WalaException {
-    JavaScriptLoaderFactory loaders = JSCallGraphBuilderUtil.makeLoaders();
+    JavaScriptLoaderFactory loaders = JSCallGraphBuilderUtil.makeLoaders(null);
     AnalysisScope scope = JSCallGraphBuilderUtil.makeScriptScope("tests", "args.js", loaders);
 
     IClassHierarchy cha = JSCallGraphBuilderUtil.makeHierarchy(scope, loaders);

@@ -52,17 +52,20 @@ public abstract class TestSimplePageCallGraphShapeRhino extends TestSimplePageCa
 		justThisTest(TestSimplePageCallGraphShapeRhino.class);
 	}
 
-	 protected abstract IHtmlParser getParser();
+	 @Override
+  protected abstract IHtmlParser getParser();
 	  
-	  @Before
+	  @Override
+    @Before
 	  public void setUp() {
 		    com.ibm.wala.cast.js.ipa.callgraph.JSCallGraphUtil.setTranslatorFactory(new CAstRhinoTranslatorFactory());
 			WebUtil.setFactory(new IHtmlParserFactory() {
-				public IHtmlParser getParser() {
+				@Override
+        public IHtmlParser getParser() {
 					return TestSimplePageCallGraphShapeRhino.this.getParser();
 				}
 			});
 		    JSSourceExtractor.USE_TEMP_NAME = false;
-		    JSSourceExtractor.DELETE_UPON_EXIT = false;    			
+//		    JSSourceExtractor.DELETE_UPON_EXIT = false;    			
 	  }
 }

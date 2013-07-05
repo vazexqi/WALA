@@ -19,15 +19,16 @@ import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.impl.Util;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 
-public class PolyglotJavaIRTests extends JavaIRTests {
+public class PolyglotJavaIRTest extends JavaIRTests {
   
-  public PolyglotJavaIRTests() {
+  public PolyglotJavaIRTest() {
     super(null);
   }
 
   @Override
   protected AbstractAnalysisEngine getAnalysisEngine(final String[] mainClassDescriptors, Collection<String> sources, List<String> libs) {
     JavaSourceAnalysisEngine engine = new PolyglotJavaSourceAnalysisEngine() {
+      @Override
       protected Iterable<Entrypoint> makeDefaultEntrypoints(AnalysisScope scope, IClassHierarchy cha) {
         return Util.makeMainEntrypoints(JavaSourceAnalysisScope.SOURCE, cha, mainClassDescriptors);
       }
