@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Serializable;
+import java.io.StringReader;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -31,11 +32,9 @@ import com.ibm.wala.util.io.FileProvider;
 public class FileOfClasses extends SetOfClasses implements Serializable {
 
   /* Serial version */
-  private static final long serialVersionUID = -3256390509887654322L;  
+  private static final long serialVersionUID = -3256390509887654322L;
 
   private static final boolean DEBUG = false;
-
-
 
   private Pattern pattern = null;
 
@@ -46,19 +45,43 @@ public class FileOfClasses extends SetOfClasses implements Serializable {
   private FileOfClasses(File textFile) throws IOException {
     this(textFile.exists()? new FileInputStream(textFile): FileProvider.class.getClassLoader().getResourceAsStream(textFile.getName()));
   }
-  
+
   public static FileOfClasses createFileOfClasses(File textFile) throws IOException {
     if (textFile == null) {
       throw new IllegalArgumentException("null textFile");
     }
     return new FileOfClasses(textFile);
   }
-  
+
   public FileOfClasses(InputStream input) throws IOException {
     if (input == null) {
       throw new IllegalArgumentException("null input");
     }
     BufferedReader is = new BufferedReader(new InputStreamReader(input));
+
+    StringBuffer regex = null;
+    String line;
+    while ((line = is.readLine()) != null) {
+      if (regex == null) {
+        regex = new StringBuffer("(" + line + ")");
+      } else {
+        regex.append("|(" + line + ")");
+      }
+    }
+
+    if (regex != null) {
+      this.regex = regex.toString();
+      needsCompile = true;
+    }
+
+    is.close();
+  }
+
+  public FileOfClasses(String input) throws IOException {
+    if (input == null) {
+      throw new IllegalArgumentException("null input");
+    }
+    BufferedReader is = new BufferedReader(new StringReader(input));
 
     StringBuffer regex = null;
     String line;
@@ -92,13 +115,14 @@ public class FileOfClasses extends SetOfClasses implements Serializable {
       // can't exclude primitives
       return false;
     }
-    // get rid of the initial 'L' 
+    // get rid of the initial 'L'
     final String klassName = klass.getName().toString().substring(1);
     return contains(klassName);
   }
 
   /*
-   * @see com.ibm.wala.ipa.callgraph.impl.SetOfClasses#contains(java.lang.String)
+   * @see
+   * com.ibm.wala.ipa.callgraph.impl.SetOfClasses#contains(java.lang.String)
    */
   @Override
   public boolean contains(String klassName) {
@@ -120,7 +144,9 @@ public class FileOfClasses extends SetOfClasses implements Serializable {
   }
 
   /*
-   * @see com.ibm.wala.ipa.callgraph.impl.SetOfClasses#add(com.ibm.wala.classLoader.IClass)
+   * @see
+   * com.ibm.wala.ipa.callgraph.impl.SetOfClasses#add(com.ibm.wala.classLoader
+   * .IClass)
    */
   @Override
   public void add(IClass klass) {
@@ -134,10 +160,10 @@ public class FileOfClasses extends SetOfClasses implements Serializable {
     }
     needsCompile = true;
   }
-  
+
   @Override
   public String toString() {
     return this.regex;
   }
-  
+
 }
