@@ -134,7 +134,7 @@ public class PDFSDG {
         e1.printStackTrace();
         Assertions.UNREACHABLE();
       }
-      System.err.println(sdg);
+      // System.err.println(sdg);
 
       Properties p = null;
       try {
@@ -166,6 +166,8 @@ public class PDFSDG {
       public boolean accepts(Statement o) {
         Statement s = (Statement) o;
         if (s.getNode().equals(sdg.getCallGraph().getFakeRootNode())) {
+          return false;
+        } else if (!s.getNode().getMethod().getDeclaringClass().getClassLoader().getName().equals(com.ibm.wala.util.strings.Atom.findOrCreateAsciiAtom("Application"))){
           return false;
         } else if (s instanceof MethodExitStatement || s instanceof MethodEntryStatement) {
           return false;
